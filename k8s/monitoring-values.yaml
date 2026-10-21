@@ -1,0 +1,40 @@
+# Helm values, NOT a kubectl manifest. Reference chart: kube-prometheus-stack 92.10.1.
+# Namespace is supplied to Helm by the integration owner.
+prometheusOperator:
+  enabled: true
+nodeExporter:
+  enabled: true
+kubeStateMetrics:
+  enabled: true
+kubelet:
+  enabled: true
+  serviceMonitor:
+    cAdvisor: true
+grafana:
+  enabled: true
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  service:
+    type: ClusterIP
+  persistence:
+    enabled: false
+alertmanager:
+  enabled: false
+prometheus:
+  service:
+    type: ClusterIP
+  prometheusSpec:
+    retention: 24h
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+    # Demo history is ephemeral. Add storageSpec with the team's StorageClass
+    # and retention plan if metrics must survive Prometheus Pod replacement.
