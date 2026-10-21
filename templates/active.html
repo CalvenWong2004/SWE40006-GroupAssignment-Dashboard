@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Task Dashboard (Jira From Temu)</title>
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body>
+
+<div class="container">
+    <button class="logout" onclick="logout()">Log Out</button>
+    <h2>Active Tasks</h2>
+    <button class="nav-btn" onclick="window.location.href='/completed'">View Completed Tasks</button>
+
+    <!-- Create Task Form -->
+    <div class="form-group">
+        <h3>Create New Task</h3>
+        <form id="createTaskForm">
+            <input type="text" id="taskDesc" placeholder="Task Description" maxlength="500" required>
+            <select id="taskPriority">
+                <option value="High">High</option>
+                <option value="Medium" selected>Medium</option>
+                <option value="Low">Low</option>
+            </select>
+            <select id="taskAssignee">
+                <option value="">Unassigned</option>
+            </select>
+            <button type="submit">Add Task</button>
+        </form>
+        <p id="message" style="color:#c0392b" role="alert"></p>
+    </div>
+
+    <!-- Active Tasks Table -->
+    <table id="activeTasksTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Description</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assignee</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows are built by JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+<script src="/static/app.js"></script>
+<script>
+async function loadUsers() {
+    const users = await api('/users');
+    const dropdown = document.getElementById('taskAssignee');
+    dropdown.replaceChildren(new Option('Unassigned', ''));
+    for (const user of users) {
+        dropdown.append(new Option(`${user.username}, ${user.id}`, user.id));
+    }
+}
+
+async function loadActiveTasks() {
+    const page = await api('/tasks?is_completed=false&limit=200');
+    const tbody = document.querySelector('#activeTasksTable tbody');
+    renderTasks(tbody, page.items, (task) => {
+        const buttons = [actionButton('Complete', () => run(() => api(`/tasks/${task.id}`, { method: 'PATCH', json: { is_completed: true } })))];
+        if (isAdmin()) {
+            buttons.push(actionButton('Delete', () => {
+                if (confirm('Delete this task?')) run(() => api(`/tasks/${task.id}`, { method: 'DELETE' }));
+            }));
+        }
+        return buttons;
+    });
+}
+
+// Run an API action, then refresh the table; show any error under the form.
+async function run(action) {
+    try {
+        showMessage('');
+        await action();
+        await loadActiveTasks();
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+document.getElementById('createTaskForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    const assigneeValue = document.getElementById('taskAssignee').value;
+
+    run(async () => {
+        await api('/tasks', {
+            method: 'POST',
+            json: {
+                description: document.getElementById('taskDesc').value,
+                priority: document.getElementById('taskPriority').value,
+                assignee_id: assigneeValue ? parseInt(assigneeValue, 10) : null
+            }
+        });
+        document.getElementById('taskDesc').value = '';
+        document.getElementById('taskAssignee').value = '';
+    });
+});
+
+window.onload = function () {
+    if (!requireLogin()) return;
+    loadUsers().catch((error) => showMessage(error.message));
+    loadActiveTasks().catch((error) => showMessage(error.message));
+};
+</script>
+
+</body>
+</html>

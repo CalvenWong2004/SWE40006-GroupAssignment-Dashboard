@@ -1,0 +1,99 @@
+    body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        background-color: #FAFBFC; 
+        color: #172B4D; 
+        margin: 0; 
+        padding: 40px 20px; 
+    }
+    .container { 
+        max-width: 1000px; 
+        margin: auto; 
+        background: #FFFFFF; 
+        padding: 30px; 
+        border-radius: 3px; 
+        box-shadow: 0 1px 2px rgba(9, 30, 66, 0.25); 
+    }
+    h2, h3 { 
+        color: #172B4D; 
+        font-weight: 600; 
+        margin-top: 0; 
+    }
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin-top: 20px; 
+        margin-bottom: 30px; 
+    }
+    th, td { 
+        padding: 12px 10px; 
+        text-align: left; 
+        border-bottom: 1px solid #DFE1E6; 
+        font-size: 14px; 
+    }
+    th { 
+        color: #5E6C84; 
+        font-size: 12px; 
+        text-transform: uppercase; 
+        letter-spacing: 0.3px; 
+        border-bottom: 2px solid #DFE1E6; 
+    }
+    tr:hover { 
+        background-color: #FAFBFC; 
+    }
+    .form-group { 
+        background: #F4F5F7; 
+        padding: 15px; 
+        border-radius: 3px; 
+        margin-bottom: 25px; 
+        border: 1px solid #DFE1E6; 
+    }
+    input, select { 
+        padding: 8px 12px; 
+        margin-right: 8px; 
+        margin-bottom: 10px; 
+        border: 2px solid #DFE1E6; 
+        border-radius: 3px; 
+        background-color: #FAFBFC; 
+        font-size: 14px; 
+        color: #172B4D; 
+        transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; 
+    }
+    input:focus, select:focus { 
+        background-color: #FFFFFF; 
+        border-color: #4C9AFF; 
+        outline: none; 
+    }
+    button { 
+        font-family: inherit; 
+        font-size: 14px; 
+        font-weight: 500; 
+        padding: 8px 12px; 
+        margin-right: 5px; 
+        border: none; 
+        border-radius: 3px; 
+        cursor: pointer; 
+        transition: background-color 0.2s ease-in-out; 
+    }
+    button[type="submit"] { 
+        background-color: #0052CC; 
+        color: white; 
+    }
+    button[type="submit"]:hover { 
+        background-color: #0047B3; 
+    }
+    .nav-btn { 
+        background-color: rgba(9, 30, 66, 0.04); 
+        color: #42526E; 
+        margin-bottom: 20px; 
+    }
+    .nav-btn:hover { 
+        background-color: rgba(9, 30, 66, 0.08); 
+    }
+    .logout { 
+        background-color: #DE350B; 
+        color: white; 
+        float: right; 
+    }
+    .logout:hover { 
+        background-color: #BF2600; 
+    }

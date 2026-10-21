@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Completed Tasks</title>
+    <link rel="stylesheet" href="/styles/style.css">
+</head>
+<body>
+
+<div class="container">
+    <button class="logout" onclick="logout()">Log Out</button>
+    <h2>Completed Tasks</h2>
+    <button class="nav-btn" onclick="window.location.href='/dashboard'">Back to Active Tasks</button>
+    <p id="message" style="color:#c0392b" role="alert"></p>
+
+    <!-- Completed Tasks Table -->
+    <table id="completedTasksTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Description</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Assignee</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Rows are built by JavaScript -->
+        </tbody>
+    </table>
+</div>
+
+<script src="/static/app.js"></script>
+<script>
+async function loadCompletedTasks() {
+    const page = await api('/tasks?is_completed=true&limit=200');
+    const tbody = document.querySelector('#completedTasksTable tbody');
+    renderTasks(tbody, page.items, (task) => {
+        const buttons = [actionButton('Reopen', () => run(() => api(`/tasks/${task.id}`, { method: 'PATCH', json: { status: 'To Do' } })))];
+        if (isAdmin()) {
+            buttons.push(actionButton('Delete', () => {
+                if (confirm('Delete this task?')) run(() => api(`/tasks/${task.id}`, { method: 'DELETE' }));
+            }));
+        }
+        return buttons;
+    });
+}
+
+async function run(action) {
+    try {
+        showMessage('');
+        await action();
+        await loadCompletedTasks();
+    } catch (error) {
+        showMessage(error.message);
+    }
+}
+
+window.onload = function () {
+    if (!requireLogin()) return;
+    loadCompletedTasks().catch((error) => showMessage(error.message));
+};
+</script>
+</body>
+</html>
