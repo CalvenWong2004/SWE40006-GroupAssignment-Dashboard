@@ -1,0 +1,123 @@
+name: CI/CD
+
+# Pull requests to main: run the tests only.
+# Push to main: test -> build + version-tag -> deploy to Docker Desktop Kubernetes -> verify.
+#
+# Two self-hosted runners are used, selected by labels:
+#   [self-hosted, Linux]           the Linux server runner: runs the tests
+#   [self-hosted, docker-desktop]  the runner on the PC that has Docker Desktop + Kubernetes:
+#                                  builds the image, deploys, verifies (Windows, Windows PowerShell)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# One run per event type at a time; a newer push waits for the current deployment.
+concurrency:
+  group: ci-cd-${{ github.event_name }}
+  cancel-in-progress: false
+
+env:
+  APP_NAMESPACE: task-dashboard        # namespace that holds postgres + the app + their Secrets
+  IMAGE_NAME: task-dashboard
+  VERSION: v1.0.${{ github.run_number }}   # version tag: increases on every run
+  COVERAGE_MIN: "80"                   # brief: 80% test coverage gate
+
+jobs:
+  test:
+    runs-on: [self-hosted, docker-desktop]
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          $ErrorActionPreference = 'Continue'
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --quiet -r requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
+
+      - name: Run tests with coverage gate
+        run: |
+          $ErrorActionPreference = 'Continue'
+          .\.venv\Scripts\python.exe -m pytest -q --cov=. --cov-report=term-missing "--cov-fail-under=$env:COVERAGE_MIN"
+          if ($LASTEXITCODE -ne 0) { throw "tests failed or coverage is below $env:COVERAGE_MIN%" }
+
+  deploy:
+    needs: test                         # a failed test or low coverage blocks deployment
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, docker-desktop]
+    timeout-minutes: 15
+    permissions:
+      contents: write                   # lets the job push the version tag
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image (version tag + commit tag)
+        run: |
+          $ErrorActionPreference = 'Continue'   # docker/kubectl write progress to stderr
+          $sha = $env:GITHUB_SHA.Substring(0, 7)
+          docker build -t "${env:IMAGE_NAME}:${env:VERSION}" -t "${env:IMAGE_NAME}:$sha" .
+          if ($LASTEXITCODE -ne 0) { throw "docker build failed" }
+
+      - name: Roll out to Kubernetes
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $sha = $env:GITHUB_SHA.Substring(0, 7)
+          kubectl config use-context docker-desktop
+          if ($LASTEXITCODE -ne 0) { throw "cannot select the docker-desktop context" }
+
+          (Get-Content k8s/task-dashboard.yaml -Raw) -replace 'task-dashboard:latest', "${env:IMAGE_NAME}:${env:VERSION}" |
+            kubectl -n $env:APP_NAMESPACE apply -f -
+          if ($LASTEXITCODE -ne 0) { throw "kubectl apply failed" }
+
+          kubectl -n $env:APP_NAMESPACE annotate deployment/task-dashboard "kubernetes.io/change-cause=${env:VERSION} ($sha)" --overwrite
+          kubectl -n $env:APP_NAMESPACE rollout status deployment/task-dashboard --timeout=180s
+          if ($LASTEXITCODE -ne 0) { throw "rollout did not complete" }
+
+      - name: Smoke test the new version
+        run: |
+          $ErrorActionPreference = 'Continue'
+          # Runs inside a pod, so no port-forward is needed.
+          kubectl -n $env:APP_NAMESPACE exec deploy/task-dashboard -- python -c "import urllib.request,sys; r=urllib.request.urlopen('http://localhost:8000/ready'); sys.exit(0 if r.status==200 else 1)"
+          if ($LASTEXITCODE -ne 0) { throw "smoke test failed" }
+
+      - name: Roll back if anything above failed
+        if: failure()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          kubectl -n $env:APP_NAMESPACE rollout undo deployment/task-dashboard
+          [System.IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, "Deployment of ${env:VERSION} failed and was rolled back.`n")
+
+      - name: Tag the released version in Git
+        if: success()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $sha = $env:GITHUB_SHA.Substring(0, 7)
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git tag -a $env:VERSION -m "Deployed ${env:VERSION} ($sha)"
+          git push origin $env:VERSION
+          if ($LASTEXITCODE -ne 0) { throw "could not push tag" }
+
+      - name: Report commit-to-live time
+        if: success()
+        run: |
+          $pushed = [DateTimeOffset]::Parse("${{ github.event.head_commit.timestamp }}")
+          $seconds = [int]([DateTimeOffset]::UtcNow - $pushed).TotalSeconds
+          $verdict = if ($seconds -le 300) { "within the 5 minute target" } else { "OVER the 5 minute target" }
+          [System.IO.File]::AppendAllText($env:GITHUB_STEP_SUMMARY, "Released ${env:VERSION}: $seconds seconds from commit to live ($verdict).`n")
+
+      - name: Show deployed state
+        if: always()
+        run: |
+          $ErrorActionPreference = 'Continue'
+          kubectl -n $env:APP_NAMESPACE get pods -l app=task-dashboard -o wide
+          kubectl -n $env:APP_NAMESPACE rollout history deployment/task-dashboard

@@ -1,0 +1,101 @@
+# FastAPI task dashboard. No namespace here: pass -n <namespace> when applying.
+#
+# Needs two Secrets in that namespace (never commit them):
+#   postgres-credentials  keys POSTGRES_USER, POSTGRES_DB, POSTGRES_PASSWORD   (from postgres.yaml's setup)
+#   app-secret            key  SECRET_KEY (>= 32 chars); optional SEED_DEMO_USERS, SEED_PASSWORD
+#
+# The image tag below is a placeholder. The pipeline replaces it with the commit's tag.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-dashboard
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never remove a working pod before its replacement is Ready
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: task-dashboard
+  template:
+    metadata:
+      labels:
+        app: task-dashboard
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        kubernetes.io/os: linux
+      containers:
+        - name: app
+          image: task-dashboard:latest
+          imagePullPolicy: IfNotPresent   # image is built locally on the runner, not pulled
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            # These three must be declared before DATABASE_URL so $(VAR) expands.
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER }
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef: { name: postgres-credentials, key: POSTGRES_DB }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD }
+            # Use a password without @ / : ? # characters, or URL-encode it.
+            - name: DATABASE_URL
+              value: postgresql+asyncpg://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@postgres:5432/$(POSTGRES_DB)
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef: { name: app-secret, key: SECRET_KEY }
+            - name: SEED_DEMO_USERS
+              valueFrom:
+                secretKeyRef: { name: app-secret, key: SEED_DEMO_USERS, optional: true }
+            - name: SEED_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: app-secret, key: SEED_PASSWORD, optional: true }
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          startupProbe:           # allows time for the first database connection and table creation
+            httpGet: { path: /health, port: http }
+            periodSeconds: 3
+            failureThreshold: 40
+          readinessProbe:         # traffic only reaches pods that can talk to the database
+            httpGet: { path: /ready, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+            seccompProfile:
+              type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-dashboard
+spec:
+  type: ClusterIP
+  selector:
+    app: task-dashboard
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

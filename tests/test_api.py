@@ -161,6 +161,12 @@ def test_only_admin_can_delete_tasks(client, admin_headers, user_headers):
     assert client.get(f"/tasks/{task['id']}", headers=user_headers).status_code == 404
 
 
+# ---------- health ----------
+def test_health_and_ready_need_no_login(client):
+    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/ready").json() == {"status": "ready"}
+
+
 # ---------- pages ----------
 def test_pages_are_served(client):
     for path in ["/", "/dashboard", "/completed"]:

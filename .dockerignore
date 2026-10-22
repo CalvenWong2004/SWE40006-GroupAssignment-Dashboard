@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.env
+*.db
+tests
+k8s
+README.md
+Dockerfile
+.dockerignore
