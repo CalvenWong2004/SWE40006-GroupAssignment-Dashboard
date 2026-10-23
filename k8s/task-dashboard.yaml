@@ -92,10 +92,13 @@ kind: Service
 metadata:
   name: task-dashboard
 spec:
-  type: ClusterIP
+  # LoadBalancer: Docker Desktop publishes this on http://localhost:8000 by itself and
+  # balances requests across the pods, so no `kubectl port-forward` is needed and the
+  # address keeps working through rolling updates.
+  type: LoadBalancer
   selector:
     app: task-dashboard
   ports:
     - name: http
-      port: 80
+      port: 8000
       targetPort: http
