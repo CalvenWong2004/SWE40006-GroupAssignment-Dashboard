@@ -10,6 +10,14 @@ kubelet:
   enabled: true
   serviceMonitor:
     cAdvisor: true
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeControllerManger:
+  enabled: false
+kubeProxy:
+  enabled: false
 grafana:
   enabled: true
   admin:
