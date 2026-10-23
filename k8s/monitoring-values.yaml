@@ -18,6 +18,9 @@ kubeControllerManger:
   enabled: false
 kubeProxy:
   enabled: false
+prometheus-node-exporter:
+  hostRootFsMount:
+    enabled: false  
 grafana:
   enabled: true
   admin:
