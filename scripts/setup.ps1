@@ -242,8 +242,8 @@ try {
     Write-Host '       .\config.cmd --url <repo URL> --token <TOKEN> --labels docker-desktop'
     Write-Host '       .\run.cmd        (leave this window open; answer N to the service question)'
     Write-Host '  3. Push a new commit to main (not "Re-run": that reuses the run number and the Git tag step fails).'
-    Write-Host '  4. View the app and monitoring (one PowerShell window each):'
-    Write-Host "       kubectl -n $AppNamespace port-forward svc/task-dashboard 8000:80"
+    Write-Host '  4. Open the app at http://localhost:8000 (published by the LoadBalancer Service once the first'
+    Write-Host '     deployment has run; no port-forward needed). For monitoring, one PowerShell window each:'
     if (-not $SkipMonitoring) {
         Write-Host "       kubectl -n $MonitorNamespace port-forward service/monitoring-kube-prometheus-prometheus 9090:9090"
         Write-Host "       kubectl -n $MonitorNamespace port-forward service/monitoring-grafana 3000:80"

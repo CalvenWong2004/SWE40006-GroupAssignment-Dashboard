@@ -103,14 +103,22 @@ kubectl -n task-dashboard wait --for=condition=Ready pod/postgres --timeout=300s
 Never commit Secret values. Use a database password without `@ / : ? #`, because it is placed in
 a connection URL.
 
-To view the running app:
+To view the running app, open http://localhost:8000. The Service is a `LoadBalancer`, which Docker
+Desktop publishes on localhost and balances across the pods, so the address keeps working through
+rolling updates. Check it with `kubectl -n task-dashboard get svc task-dashboard` (EXTERNAL-IP `localhost`).
+
+### Setting up a new machine
+
+After installing Docker Desktop (Kubernetes enabled, kubeadm), Git, Python and Helm, run from the
+cloned repository:
 
 ```powershell
-kubectl -n task-dashboard port-forward svc/task-dashboard 8000:80
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
-then open http://localhost:8000. (Port-forward reaches a single pod. Service load balancing happens
-inside the cluster.)
+It checks the prerequisites, creates the namespaces and Secrets (it asks for the passwords),
+starts PostgreSQL and installs Prometheus and Grafana. Registering the GitHub Actions runner is
+still manual (see below).
 
 Monitoring (Prometheus and Grafana) is installed separately from `k8s/monitoring-values.yaml`;
 the commands are in `k8s/README.md`.
