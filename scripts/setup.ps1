@@ -243,10 +243,10 @@ try {
     Write-Host '       .\run.cmd        (leave this window open; answer N to the service question)'
     Write-Host '  3. Push a new commit to main (not "Re-run": that reuses the run number and the Git tag step fails).'
     Write-Host '  4. Open the app at http://localhost:8000 (published by the LoadBalancer Service once the first'
-    Write-Host '     deployment has run; no port-forward needed). For monitoring, one PowerShell window each:'
+    Write-Host '     deployment has run; no port-forward needed).'
     if (-not $SkipMonitoring) {
-        Write-Host "       kubectl -n $MonitorNamespace port-forward service/monitoring-kube-prometheus-prometheus 9090:9090"
-        Write-Host "       kubectl -n $MonitorNamespace port-forward service/monitoring-grafana 3000:80"
+        Write-Host '     Monitoring is published the same way: Prometheus at http://localhost:9090 and Grafana at'
+        Write-Host '     http://localhost:3000 (log in as admin with the Grafana password you chose).'
     }
 }
 catch {

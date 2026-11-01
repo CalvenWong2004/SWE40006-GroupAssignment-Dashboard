@@ -14,13 +14,13 @@ kubeEtcd:
   enabled: false
 kubeScheduler:
   enabled: false
-kubeControllerManger:
+kubeControllerManager:
   enabled: false
 kubeProxy:
   enabled: false
 prometheus-node-exporter:
   hostRootFsMount:
-    enabled: false  
+    enabled: false
 grafana:
   enabled: true
   admin:
@@ -28,14 +28,18 @@ grafana:
     userKey: admin-user
     passwordKey: admin-password
   service:
-    type: ClusterIP
+    # LoadBalancer: Docker Desktop publishes Grafana on http://localhost:3000 (no port-forward needed).
+    type: LoadBalancer
+    port: 3000
   persistence:
     enabled: false
 alertmanager:
   enabled: false
 prometheus:
   service:
-    type: ClusterIP
+    # LoadBalancer: Docker Desktop publishes Prometheus on http://localhost:9090 (no port-forward needed).
+    # Prometheus has no login: only use this on a machine and network you control.
+    type: LoadBalancer
   prometheusSpec:
     retention: 24h
     scrapeInterval: 30s
